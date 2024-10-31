@@ -266,6 +266,8 @@ func main() {
 		case "sorti":
 			node, err = node.SortI(strings.Split(os.Args[i+1], ","))
 			i += 1
+		default:
+			log.Fatalln("unknown operation:", err)
 		}
 		if err != nil {
 			log.Fatalln("unable to pipeline:", err)
