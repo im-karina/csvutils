@@ -298,6 +298,43 @@ func (n1 Node) SortF(cols []string) (n2 Node, err error) {
 	})
 }
 
+func (n1 Node) Compact(cols []string) (n2 Node, err error) {
+	n2.Headers = n1.Headers
+	ch := make(chan []string)
+	n2.Data = ch
+
+	if len(cols) == 0 {
+		cols = n1.Headers
+	}
+
+	inclusions := make([]bool, len(n1.Headers))
+	for i, h := range n1.Headers {
+		inclusions[i] = slices.Index(cols, h) >= 0
+	}
+
+	go func() {
+		defer close(ch)
+
+		prev, ok := <-n1.Data
+		if !ok {
+			return
+		}
+
+		ch <- prev
+		for row := range n1.Data {
+			for i, v := range row {
+				if inclusions[i] && prev[i] != v {
+					ch <- row
+					prev = row
+					continue
+				}
+			}
+		}
+	}()
+
+	return n2, nil
+}
+
 func main() {
 	node := Node{}
 
@@ -348,8 +385,11 @@ func main() {
 				matches[j/2][1] = string(cols[j+1])
 			}
 			node, err = node.Join(fname, matches)
+		case "compact":
+			node, err = node.Compact(strings.Split(os.Args[i+1], ","))
+			i += 1
 		default:
-			log.Fatalln("unknown operation:", err)
+			log.Fatalln("unknown operation:", arg)
 		}
 		if err != nil {
 			log.Fatalln("unable to pipeline:", err)
