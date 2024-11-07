@@ -56,4 +56,11 @@ Numeric,English
 12,twelve
 66,sixty six
 77,seventy seven
+% cat samples/abc.csv | go run csvedit/csvedit.go join samples/abc_join.csv "A,D"
+A,B,C,E,F
+a,b,c,amanda,fun stuff
+a,b,c,bobby,boring stuff
+do,re,mi,charlotte,exciting stuff
+alpha,beta,gamma,derek,sleepy stuff
+alpha,beta,gamma,ela,alarming stuff
 ```

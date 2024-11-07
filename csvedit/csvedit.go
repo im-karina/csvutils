@@ -141,6 +141,74 @@ func (n1 Node) sort(fn func(n1 []string, n2 []string) int) (n2 Node, err error) 
 	return n2, nil
 }
 
+func (n1 Node) Join(fname string, matches [][2]string) (n2 Node, err error) {
+	f, err := os.Open(fname)
+	if err != nil {
+		return
+	}
+	records, err := csv.NewReader(f).ReadAll()
+	if err != nil {
+		return
+	}
+	tgtHeaders := records[0]
+	matchIndexes := make([][2]int, len(matches))
+	tgtMapping := make([]int, len(tgtHeaders))
+	n2.Headers = make([]string, len(n1.Headers)+len(tgtHeaders)-len(matches))
+	copy(n2.Headers, n1.Headers)
+
+	{
+		joinHeaders := make([]string, len(matches))
+		for i, m := range matches {
+			joinHeaders[i] = m[1]
+			matchIndexes[i][0] = slices.Index(n1.Headers, m[0])
+			matchIndexes[i][1] = slices.Index(tgtHeaders, m[1])
+		}
+		j := len(n1.Headers)
+		for i, tgtHeader := range tgtHeaders {
+			if slices.Contains(joinHeaders, tgtHeader) {
+				tgtMapping[i] = -1
+			} else {
+				tgtMapping[i] = j
+				n2.Headers[j] = tgtHeader
+				j++
+			}
+		}
+	}
+
+	tgtRecords := records[1:]
+
+	ch := make(chan []string, 100)
+	go func() {
+		defer close(ch)
+
+		for r1 := range n1.Data {
+			for _, r2 := range tgtRecords {
+				match := true
+				for _, pair := range matchIndexes {
+					if r1[pair[0]] != r2[pair[1]] {
+						match = false
+						break
+					}
+				}
+
+				if match {
+					r3 := make([]string, len(n2.Headers))
+					copy(r3, r1)
+					for i, j := range tgtMapping {
+						if j > 0 {
+							r3[j] = r2[i]
+						}
+					}
+					ch <- r3
+				}
+			}
+		}
+	}()
+	n2.Data = ch
+
+	return n2, nil
+}
+
 func (n1 Node) Sort(cols []string) (n2 Node, err error) {
 	m := make(map[string]int)
 	for _, col := range cols {
@@ -266,6 +334,20 @@ func main() {
 		case "sorti":
 			node, err = node.SortI(strings.Split(os.Args[i+1], ","))
 			i += 1
+		case "join":
+			fname := os.Args[i+1]
+			cols := strings.Split(os.Args[i+2], ",")
+			i += 2
+
+			if len(cols)%2 != 0 {
+				log.Fatalln(`join should have an even number of entries: source column 1,target column 1, source column 2, target column 2, etc.`)
+			}
+			matches := make([][2]string, len(cols)/2)
+			for j := 0; j < len(cols); j += 2 {
+				matches[j/2][0] = string(cols[j])
+				matches[j/2][1] = string(cols[j+1])
+			}
+			node, err = node.Join(fname, matches)
 		default:
 			log.Fatalln("unknown operation:", err)
 		}
