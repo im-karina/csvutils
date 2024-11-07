@@ -306,6 +306,12 @@ func (n1 Node) Compact(cols []string) (n2 Node, err error) {
 	if len(cols) == 0 {
 		cols = n1.Headers
 	}
+	for _, col := range cols {
+		if slices.Index(n1.Headers, col) < 0 {
+			err = fmt.Errorf("column was missing from input: %v", col)
+			return
+		}
+	}
 
 	inclusions := make([]bool, len(n1.Headers))
 	for i, h := range n1.Headers {
@@ -332,6 +338,45 @@ func (n1 Node) Compact(cols []string) (n2 Node, err error) {
 		}
 	}()
 
+	return n2, nil
+}
+
+func (n1 Node) Drop(cols []string) (n2 Node, err error) {
+	for _, col := range cols {
+		if slices.Index(n1.Headers, col) < 0 {
+			err = fmt.Errorf("column was missing from input: %v", col)
+			return
+		}
+	}
+
+	j := 0
+	mapping := make([]int, len(n1.Headers))
+	for i, h := range n1.Headers {
+		if slices.Contains(cols, h) {
+			mapping[i] = -1
+		} else {
+			n2.Headers = append(n2.Headers, h)
+			mapping[i] = j
+			j++
+		}
+	}
+	ch := make(chan []string)
+	n2.Data = ch
+
+	go func() {
+		defer close(ch)
+
+		for row := range n1.Data {
+			newRow := make([]string, j)
+			for i, v := range row {
+				col := mapping[i]
+				if col >= 0 {
+					newRow[col] = v
+				}
+			}
+			ch <- newRow
+		}
+	}()
 	return n2, nil
 }
 
@@ -387,6 +432,9 @@ func main() {
 			node, err = node.Join(fname, matches)
 		case "compact":
 			node, err = node.Compact(strings.Split(os.Args[i+1], ","))
+			i += 1
+		case "drop":
+			node, err = node.Drop(strings.Split(os.Args[i+1], ","))
 			i += 1
 		default:
 			log.Fatalln("unknown operation:", arg)

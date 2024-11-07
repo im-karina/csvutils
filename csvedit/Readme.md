@@ -69,4 +69,11 @@ a,amanda,fun stuff
 alpha,derek,sleepy stuff
 do,charlotte,exciting stuff
 exclusion,charlotte,exciting stuff
+% cat samples/abc.csv | csvedit drop A          
+B,C
+b,c
+2,3
+re,mi
+beta,gamma
+dos,tres
 ```
