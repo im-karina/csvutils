@@ -341,6 +341,23 @@ func (n1 Node) Compact(cols []string) (n2 Node, err error) {
 	return n2, nil
 }
 
+func (n1 Node) Rename(from []string, to []string) (n2 Node, err error) {
+	n2.Headers = make([]string, len(n1.Headers))
+	copy(n2.Headers, n1.Headers)
+
+	for i, h := range from {
+		j := slices.Index(n1.Headers, h)
+		if j < 0 {
+			return n2, fmt.Errorf("column missing from input: %v", h)
+		}
+
+		n2.Headers[j] = to[i]
+	}
+	n2.Data = n1.Data
+
+	return n2, nil
+}
+
 func (n1 Node) Drop(cols []string) (n2 Node, err error) {
 	for _, col := range cols {
 		if slices.Index(n1.Headers, col) < 0 {
@@ -436,6 +453,9 @@ func main() {
 		case "drop":
 			node, err = node.Drop(strings.Split(os.Args[i+1], ","))
 			i += 1
+		case "rename":
+			node, err = node.Rename(strings.Split(os.Args[i+1], ","), strings.Split(os.Args[i+2], ","))
+			i += 2
 		default:
 			log.Fatalln("unknown operation:", arg)
 		}

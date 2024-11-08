@@ -76,4 +76,11 @@ b,c
 re,mi
 beta,gamma
 dos,tres
+% cat samples/abc.csv | csvedit rename A,B X,Y
+X,Y,C
+a,b,c
+1,2,3
+do,re,mi
+alpha,beta,gamma
+uno,dos,tres
 ```
