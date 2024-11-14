@@ -397,6 +397,91 @@ func (n1 Node) Drop(cols []string) (n2 Node, err error) {
 	return n2, nil
 }
 
+func (n1 Node) SavePartitions(cols []string, fnameTemplate string) (n2 Node, err error) {
+	for _, col := range cols {
+		if slices.Index(n1.Headers, col) < 0 {
+			err = fmt.Errorf("column was missing from input: %v", col)
+			return
+		}
+	}
+	n2.Headers = n1.Headers
+
+	mapping := make([]int, len(n1.Headers))
+	for i := range n1.Headers {
+		mapping[i] = -1
+	}
+	for i, h := range cols {
+		j := slices.Index(n1.Headers, h)
+		mapping[j] = i
+	}
+
+	ch := make(chan []string)
+	go func() {
+		defer close(ch)
+
+		files := make(map[string][][]string)
+		writers := make(map[string]*csv.Writer)
+		for row := range n1.Data {
+			ch <- row
+
+			key := make([]any, len(cols))
+			for i := 0; i < len(n1.Headers); i++ {
+				j := mapping[i]
+				if j < 0 {
+					continue
+				}
+
+				key[j] = row[i]
+			}
+			fname := fmt.Sprintf(fnameTemplate, key...)
+			files[fname] = append(files[fname], row)
+
+			if len(files[fname]) > 1000 {
+				if writers[fname] == nil {
+					f, err := os.Create(fname)
+					if err != nil {
+						panic(err)
+					}
+					writers[fname] = csv.NewWriter(f)
+				}
+
+				err = writers[fname].WriteAll(files[fname])
+				if err != nil {
+					panic(err)
+				}
+				files[fname] = nil
+			}
+		}
+		for fname, records := range files {
+			if len(records) == 0 {
+				continue
+			}
+
+			if writers[fname] == nil {
+				f, err := os.Create(fname)
+				if err != nil {
+					panic(err)
+				}
+				writers[fname] = csv.NewWriter(f)
+			}
+
+			err = writers[fname].WriteAll(records)
+			if err != nil {
+				panic(err)
+			}
+		}
+		for _, wr := range writers {
+			wr.Flush()
+			if err = wr.Error(); err != nil {
+				panic(err)
+			}
+		}
+	}()
+	n2.Data = ch
+
+	return n2, nil
+}
+
 func main() {
 	node := Node{}
 
@@ -455,6 +540,9 @@ func main() {
 			i += 1
 		case "rename":
 			node, err = node.Rename(strings.Split(os.Args[i+1], ","), strings.Split(os.Args[i+2], ","))
+			i += 2
+		case "save_partitions":
+			node, err = node.SavePartitions(strings.Split(os.Args[i+1], ","), os.Args[i+2])
 			i += 2
 		default:
 			log.Fatalln("unknown operation:", arg)
