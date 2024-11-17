@@ -443,6 +443,7 @@ func (n1 Node) SavePartitions(cols []string, fnameTemplate string) (n2 Node, err
 						panic(err)
 					}
 					writers[fname] = csv.NewWriter(f)
+					writers[fname].Write(n1.Headers)
 				}
 
 				err = writers[fname].WriteAll(files[fname])
@@ -463,6 +464,7 @@ func (n1 Node) SavePartitions(cols []string, fnameTemplate string) (n2 Node, err
 					panic(err)
 				}
 				writers[fname] = csv.NewWriter(f)
+				writers[fname].Write(n1.Headers)
 			}
 
 			err = writers[fname].WriteAll(records)
