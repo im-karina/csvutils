@@ -210,6 +210,8 @@ func (n1 Node) Join(fname string, matches [][2]string) (n2 Node, err error) {
 }
 
 func (n1 Node) Sort(cols []string) (n2 Node, err error) {
+	isInHeader := make([]bool, len(n1.Headers))
+
 	m := make(map[string]int)
 	for _, col := range cols {
 		n := slices.Index(n1.Headers, col)
@@ -217,11 +219,20 @@ func (n1 Node) Sort(cols []string) (n2 Node, err error) {
 			return n2, fmt.Errorf("column missing from input data: '%s'", col)
 		}
 		m[col] = n
+		isInHeader[n] = true
 	}
 
 	return n1.sort(func(r1, r2 []string) int {
 		for _, c := range cols {
 			if c := strings.Compare(r1[m[c]], r2[m[c]]); c != 0 {
+				return c
+			}
+		}
+		for i, header := range isInHeader {
+			if header {
+				continue
+			}
+			if c := strings.Compare(r1[i], r2[i]); c != 0 {
 				return c
 			}
 		}
