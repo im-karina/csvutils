@@ -535,12 +535,15 @@ func main() {
 			i += 1
 		case "join":
 			fname := os.Args[i+1]
-			cols := strings.Split(os.Args[i+2], ",")
+			var cols []string
+			if len(os.Args[i+2]) > 0 {
+				cols = strings.Split(os.Args[i+2], ",")
+				if len(cols)%2 != 0 {
+					log.Fatalln(`join should have an even number of entries: source column 1,target column 1, source column 2, target column 2, etc.`)
+				}
+			}
 			i += 2
 
-			if len(cols)%2 != 0 {
-				log.Fatalln(`join should have an even number of entries: source column 1,target column 1, source column 2, target column 2, etc.`)
-			}
 			matches := make([][2]string, len(cols)/2)
 			for j := 0; j < len(cols); j += 2 {
 				matches[j/2][0] = string(cols[j])

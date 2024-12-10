@@ -69,6 +69,8 @@ a,amanda,fun stuff
 alpha,derek,sleepy stuff
 do,charlotte,exciting stuff
 exclusion,charlotte,exciting stuff
+% cat samples/abc.csv | csvedit join samples/nums.csv "" | wc -l # this does a cartesian product of all records, so it can be used to add columns to all rows if only one row is present in the second csv
+51
 % cat samples/abc.csv | csvedit drop A          
 B,C
 b,c
