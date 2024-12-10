@@ -9,6 +9,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/dimchansky/utfbom"
 )
 
 type Node struct {
@@ -498,7 +500,7 @@ func (n1 Node) SavePartitions(cols []string, fnameTemplate string) (n2 Node, err
 func main() {
 	node := Node{}
 
-	c := csv.NewReader(os.Stdin)
+	c := csv.NewReader(utfbom.SkipOnly(os.Stdin))
 	headers, err := c.Read()
 	if err != nil {
 		log.Fatalln("unable to read headers from input file:", err)
